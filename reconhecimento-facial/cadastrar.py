@@ -12,6 +12,8 @@ import json
 import cv2
 import numpy as np
 
+from haar import carregar_cascade
+
 # Diretórios/arquivos usados pelo sistema
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(BASE_DIR, "dataset")
@@ -35,9 +37,7 @@ def detectar_rosto(cascade, frame_cinza):
 
 def capturar_amostras(nome):
     """Captura NUM_AMOSTRAS imagens do rosto pela webcam."""
-    cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
+    cascade = carregar_cascade()
     camera = cv2.VideoCapture(0)
     if not camera.isOpened():
         raise RuntimeError("Não foi possível abrir a webcam (índice 0).")

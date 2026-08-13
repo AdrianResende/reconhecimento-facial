@@ -12,6 +12,8 @@ import json
 
 import cv2
 
+from haar import carregar_cascade
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELO_PATH = os.path.join(BASE_DIR, "modelo_lbph.yml")
 LABELS_PATH = os.path.join(BASE_DIR, "labels.json")
@@ -32,9 +34,7 @@ def main():
     reconhecedor = cv2.face.LBPHFaceRecognizer_create()
     reconhecedor.read(MODELO_PATH)
 
-    cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
+    cascade = carregar_cascade()
     camera = cv2.VideoCapture(0)
     if not camera.isOpened():
         raise RuntimeError("Não foi possível abrir a webcam (índice 0).")
