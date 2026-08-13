@@ -36,6 +36,29 @@ python reconhecer.py
 - **Vermelho** = "Desconhecido" (não é uma pessoa cadastrada).
 - Pressione `q` para sair.
 
+## Usando a câmera do iPhone
+
+1. Instale no iPhone um app que transmita a câmera pela rede, como o
+   **DroidCam** (grátis na App Store).
+2. Abra o app: ele mostra um endereço tipo `http://192.168.0.15:4747/video`.
+3. Com o iPhone e o computador na **mesma rede Wi-Fi**, passe esse endereço
+   para os scripts:
+
+```bash
+python cadastrar.py http://192.168.0.15:4747/video
+python reconhecer.py http://192.168.0.15:4747/video
+```
+
+Sem argumento, os scripts usam a webcam do notebook (índice 0).
+
+## Ação ao confirmar a identidade
+
+Quando a mesma pessoa é reconhecida por vários frames seguidos (retângulo
+verde), o `reconhecer.py` executa uma ação — por padrão, abre o Relógio
+(`index.html`) no navegador. Para trocar, edite a função `executar_acao()`
+em `reconhecer.py`. Há um cooldown de 30s para a ação não repetir enquanto
+você continua na frente da câmera (`COOLDOWN_ACAO_SEGUNDOS`).
+
 ## Ajustes
 
 - `LIMIAR_CONFIANCA` em `reconhecer.py` (padrão 50): no LBPH, quanto **menor**

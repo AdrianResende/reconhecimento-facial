@@ -2,13 +2,20 @@
 """
 Reconhecimento facial ("login").
 
-Abre a webcam e verifica se o rosto na frente da câmera é de uma pessoa
-cadastrada. Quanto MENOR a confiança do LBPH, mais parecido é o rosto.
-Uso: python reconhecer.py
+Abre a câmera e verifica se o rosto é de uma pessoa cadastrada. Quando a
+identidade é confirmada por vários frames seguidos, executa uma ação
+(por padrão, abre o Relógio no navegador — personalize em executar_acao).
+
+Uso:
+    python reconhecer.py                                # webcam do notebook
+    python reconhecer.py http://192.168.0.15:4747/video # câmera do iPhone
 """
 
 import os
+import sys
 import json
+import time
+import webbrowser
 
 import cv2
 
@@ -27,6 +34,33 @@ LIMIAR_CONFIANCA = 50.0
 # Evita que um único frame "sortudo" identifique a pessoa errada.
 FRAMES_PARA_CONFIRMAR = 10
 
+# Depois de executar a ação, espera esse tempo antes de poder disparar de
+# novo (senão a ação repetiria a cada frame enquanto você olha para a câmera)
+COOLDOWN_ACAO_SEGUNDOS = 30
+
+
+def executar_acao(nome):
+    """Ação executada quando a identidade é confirmada.
+
+    Troque o conteúdo desta função pelo que você quiser: abrir um programa,
+    tocar um som, chamar uma API, acender uma luz...
+    """
+    print(f"\n>>> Identidade confirmada: {nome}! Abrindo o Relógio... <<<\n")
+    pagina = os.path.join(os.path.dirname(BASE_DIR), "index.html")
+    webbrowser.open(f"file://{pagina}")
+
+
+def abrir_camera(fonte):
+    """Abre a webcam (índice numérico) ou um stream de vídeo (URL)."""
+    camera = cv2.VideoCapture(fonte)
+    if not camera.isOpened():
+        raise RuntimeError(
+            f"Não foi possível abrir a fonte de vídeo: {fonte!r}. "
+            "Se for a câmera do iPhone, confira se o app está transmitindo "
+            "e se o celular está na mesma rede Wi-Fi."
+        )
+    return camera
+
 
 def main():
     if not (os.path.exists(MODELO_PATH) and os.path.exists(LABELS_PATH)):
@@ -40,15 +74,21 @@ def main():
     reconhecedor.read(MODELO_PATH)
 
     cascade = carregar_cascade()
-    camera = cv2.VideoCapture(0)
-    if not camera.isOpened():
-        raise RuntimeError("Não foi possível abrir a webcam (índice 0).")
+
+    # Fonte de vídeo: webcam (0) ou URL passada na linha de comando
+    fonte = 0
+    if len(sys.argv) > 1:
+        fonte = sys.argv[1]
+        if fonte.isdigit():
+            fonte = int(fonte)
+    camera = abrir_camera(fonte)
 
     print("Reconhecendo... Pressione 'q' para sair.")
 
     # Contagem de frames consecutivos reconhecendo a mesma pessoa
     ultimo_id = None
     frames_seguidos = 0
+    ultima_acao = 0.0  # quando a ação foi executada pela última vez
 
     while True:
         ok, frame = camera.read()
@@ -82,6 +122,11 @@ def main():
                 if frames_seguidos >= FRAMES_PARA_CONFIRMAR:
                     texto = f"{nome} confirmado ({confianca:.0f})"
                     cor = (0, 255, 0)   # verde: identidade confirmada
+
+                    # dispara a ação (respeitando o cooldown)
+                    if time.time() - ultima_acao >= COOLDOWN_ACAO_SEGUNDOS:
+                        ultima_acao = time.time()
+                        executar_acao(nome)
                 else:
                     texto = (f"Verificando {nome}... "
                              f"{frames_seguidos}/{FRAMES_PARA_CONFIRMAR}")

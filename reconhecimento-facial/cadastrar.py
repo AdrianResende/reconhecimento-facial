@@ -2,11 +2,15 @@
 """
 Cadastro de pessoa para reconhecimento facial.
 
-Abre a webcam, captura várias amostras do rosto e treina o modelo LBPH.
-Uso: python cadastrar.py
+Abre a câmera, captura várias amostras do rosto e treina o modelo LBPH.
+
+Uso:
+    python cadastrar.py                                # webcam do notebook
+    python cadastrar.py http://192.168.0.15:4747/video # câmera do iPhone
 """
 
 import os
+import sys
 import json
 
 import cv2
@@ -46,12 +50,16 @@ def detectar_rosto(cascade, frame_cinza):
     return max(rostos, key=lambda r: r[2] * r[3])
 
 
-def capturar_amostras(nome):
-    """Captura NUM_AMOSTRAS imagens do rosto pela webcam."""
+def capturar_amostras(nome, fonte=0):
+    """Captura NUM_AMOSTRAS imagens do rosto pela câmera."""
     cascade = carregar_cascade()
-    camera = cv2.VideoCapture(0)
+    camera = cv2.VideoCapture(fonte)
     if not camera.isOpened():
-        raise RuntimeError("Não foi possível abrir a webcam (índice 0).")
+        raise RuntimeError(
+            f"Não foi possível abrir a fonte de vídeo: {fonte!r}. "
+            "Se for a câmera do iPhone, confira se o app está transmitindo "
+            "e se o celular está na mesma rede Wi-Fi."
+        )
 
     pasta_pessoa = os.path.join(DATASET_DIR, nome)
     os.makedirs(pasta_pessoa, exist_ok=True)
@@ -125,12 +133,18 @@ def treinar_modelo():
 
 
 def main():
+    fonte = 0
+    if len(sys.argv) > 1:
+        fonte = sys.argv[1]
+        if fonte.isdigit():
+            fonte = int(fonte)
+
     nome = input("Digite o nome da pessoa a cadastrar: ").strip()
     if not nome:
         print("Nome vazio. Abortando.")
         return
 
-    if capturar_amostras(nome):
+    if capturar_amostras(nome, fonte):
         treinar_modelo()
         print("\nCadastro concluído! Agora rode: python reconhecer.py")
 
