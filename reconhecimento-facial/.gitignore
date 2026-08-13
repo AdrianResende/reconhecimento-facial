@@ -1,0 +1,4 @@
+dataset/
+modelo_lbph.yml
+labels.json
+__pycache__/
