@@ -16,7 +16,7 @@ import json
 import cv2
 import numpy as np
 
-from haar import carregar_cascade
+from haar import carregar_cascade, parse_fonte_e_rotacao, girar_frame
 
 # Diretórios/arquivos usados pelo sistema
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -50,7 +50,7 @@ def detectar_rosto(cascade, frame_cinza):
     return max(rostos, key=lambda r: r[2] * r[3])
 
 
-def capturar_amostras(nome, fonte=0):
+def capturar_amostras(nome, fonte=0, rotacao=0):
     """Captura NUM_AMOSTRAS imagens do rosto pela câmera."""
     cascade = carregar_cascade()
     camera = cv2.VideoCapture(fonte)
@@ -73,6 +73,7 @@ def capturar_amostras(nome, fonte=0):
         if not ok:
             continue
 
+        frame = girar_frame(frame, rotacao)
         cinza = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         rosto = detectar_rosto(cascade, cinza)
 
@@ -133,18 +134,14 @@ def treinar_modelo():
 
 
 def main():
-    fonte = 0
-    if len(sys.argv) > 1:
-        fonte = sys.argv[1]
-        if fonte.isdigit():
-            fonte = int(fonte)
+    fonte, rotacao = parse_fonte_e_rotacao(sys.argv)
 
     nome = input("Digite o nome da pessoa a cadastrar: ").strip()
     if not nome:
         print("Nome vazio. Abortando.")
         return
 
-    if capturar_amostras(nome, fonte):
+    if capturar_amostras(nome, fonte, rotacao):
         treinar_modelo()
         print("\nCadastro concluído! Agora rode: python reconhecer.py")
 

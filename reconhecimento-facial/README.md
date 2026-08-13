@@ -51,6 +51,14 @@ python reconhecer.py http://192.168.0.15:4747/video
 
 Sem argumento, os scripts usam a webcam do notebook (índice 0).
 
+Se o vídeo aparecer **deitado/de lado** na janela (comum com o celular em pé),
+passe a rotação em graus como segundo argumento (90, 180 ou 270):
+
+```bash
+python cadastrar.py http://192.168.0.15:4747/video 90
+python reconhecer.py http://192.168.0.15:4747/video 90
+```
+
 ## Ação ao confirmar a identidade
 
 Quando a mesma pessoa é reconhecida por vários frames seguidos (retângulo

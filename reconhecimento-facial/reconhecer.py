@@ -19,7 +19,7 @@ import webbrowser
 
 import cv2
 
-from haar import carregar_cascade
+from haar import carregar_cascade, parse_fonte_e_rotacao, girar_frame
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELO_PATH = os.path.join(BASE_DIR, "modelo_lbph.yml")
@@ -76,11 +76,7 @@ def main():
     cascade = carregar_cascade()
 
     # Fonte de vídeo: webcam (0) ou URL passada na linha de comando
-    fonte = 0
-    if len(sys.argv) > 1:
-        fonte = sys.argv[1]
-        if fonte.isdigit():
-            fonte = int(fonte)
+    fonte, rotacao = parse_fonte_e_rotacao(sys.argv)
     camera = abrir_camera(fonte)
 
     print("Reconhecendo... Pressione 'q' para sair.")
@@ -95,6 +91,7 @@ def main():
         if not ok:
             continue
 
+        frame = girar_frame(frame, rotacao)
         cinza = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         rostos = cascade.detectMultiScale(
             cinza, scaleFactor=1.2, minNeighbors=5, minSize=(80, 80)
