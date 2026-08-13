@@ -4,7 +4,7 @@ Reconhecimento facial ("login").
 
 Abre a câmera e verifica se o rosto é de uma pessoa cadastrada. Quando a
 identidade é confirmada por vários frames seguidos, executa uma ação
-(por padrão, abre o Relógio no navegador — personalize em executar_acao).
+(personalize em executar_acao).
 
 Uso:
     python reconhecer.py                                # webcam do notebook
@@ -45,9 +45,9 @@ def executar_acao(nome):
     Troque o conteúdo desta função pelo que você quiser: abrir um programa,
     tocar um som, chamar uma API, acender uma luz...
     """
-    print(f"\n>>> Identidade confirmada: {nome}! Abrindo o Relógio... <<<\n")
-    pagina = os.path.join(os.path.dirname(BASE_DIR), "index.html")
-    webbrowser.open(f"file://{pagina}")
+    print(f"\n>>> Identidade confirmada: {nome}! <<<\n")
+    # Exemplo: abrir uma página no navegador
+    # webbrowser.open("https://www.google.com")
 
 
 def abrir_camera(fonte):
