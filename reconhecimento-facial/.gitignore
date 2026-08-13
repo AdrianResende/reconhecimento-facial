@@ -1,6 +1,7 @@
 dataset/
 modelo_lbph.yml
 labels.json
+pessoas.json
 __pycache__/
 venv/
 haarcascade_frontalface_default.xml

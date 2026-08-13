@@ -13,7 +13,27 @@ pip install -r requirements.txt
 > É necessário o pacote `opencv-contrib-python` (não o `opencv-python` comum),
 > pois o módulo `cv2.face` só existe na versão contrib.
 
-## Como usar
+## Dashboard web (universidade)
+
+Painel no navegador para cadastrar pessoas com **nome e papel**
+(Professor/Estudante) e reconhecer mostrando quem é e o papel:
+
+```bash
+python app.py                                     # webcam do notebook
+python app.py http://192.168.10.140:4747/video 90 # câmera do iPhone (com rotação)
+```
+
+Depois abra **http://localhost:5000** no navegador:
+
+- **Painel**: totais e lista de cadastrados, com botão de remover.
+- **Cadastrar**: informe nome + papel; a câmera abre e captura as 50 fotos
+  sozinha, com barra de progresso; o modelo é treinado ao final.
+- **Reconhecer**: vídeo ao vivo; professor aparece em azul, estudante em
+  verde, desconhecido em vermelho. Abaixo do vídeo fica o último confirmado.
+
+Os dados ficam em `pessoas.json` (nome → papel) + `dataset/` + `modelo_lbph.yml`.
+
+## Como usar (linha de comando)
 
 ### 1. Cadastrar uma pessoa
 

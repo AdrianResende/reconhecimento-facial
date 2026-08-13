@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titulo %}Cadastrar{% endblock %}
+{% block conteudo %}
+  <h2 style="margin-bottom:16px">Cadastrar pessoa</h2>
+  <div class="form-card">
+    {% if erro %}<div class="erro">{{ erro }}</div>{% endif %}
+    <form method="post">
+      <label for="nome">Nome completo</label>
+      <input type="text" id="nome" name="nome" placeholder="Ex.: Adrian Resende" required>
+
+      <label for="papel">Papel</label>
+      <select id="papel" name="papel" required>
+        {% for p in papeis %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+      </select>
+
+      <p style="margin-top:14px;color:#667;font-size:.9rem">
+        Na próxima tela a câmera abre e captura as fotos do rosto automaticamente.
+        Peça para a pessoa olhar para a câmera e mover a cabeça de leve.
+      </p>
+      <button class="btn primario" style="margin-top:14px">Iniciar captura</button>
+    </form>
+  </div>
+{% endblock %}

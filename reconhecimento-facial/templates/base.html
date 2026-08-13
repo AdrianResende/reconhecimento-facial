@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Reconhecimento Facial{% endblock %} — Universidade</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; color: #1c2333; }
+    header { background: #1c2b4a; color: #fff; padding: 14px 28px; display: flex; align-items: center; gap: 24px; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    header nav a { color: #c6d2ee; text-decoration: none; margin-right: 18px; font-size: .95rem; }
+    header nav a:hover { color: #fff; }
+    main { max-width: 960px; margin: 28px auto; padding: 0 16px; }
+    .cards { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .card { background: #fff; border-radius: 10px; padding: 18px 22px; flex: 1; min-width: 180px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .card .num { font-size: 2rem; font-weight: 700; }
+    .card .rotulo { color: #667; font-size: .9rem; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px;
+            overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid #eef0f4; }
+    th { background: #f7f8fb; font-size: .85rem; color: #556; text-transform: uppercase; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: .8rem; font-weight: 600; }
+    .badge.Professor { background: #e3edff; color: #1a56c4; }
+    .badge.Estudante { background: #e3f7e8; color: #17803d; }
+    .btn { display: inline-block; padding: 9px 18px; border-radius: 8px; border: 0; cursor: pointer;
+           text-decoration: none; font-size: .95rem; font-weight: 600; }
+    .btn.primario { background: #1a56c4; color: #fff; }
+    .btn.perigo { background: #fdecec; color: #c0392b; padding: 6px 12px; font-size: .85rem; }
+    .btn.sucesso { background: #17803d; color: #fff; }
+    form.inline { display: inline; }
+    .form-card { background: #fff; border-radius: 10px; padding: 24px; max-width: 460px;
+                 box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .form-card label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: .92rem; }
+    .form-card input[type=text], .form-card select { width: 100%; padding: 10px; border: 1px solid #ccd2dd;
+                 border-radius: 8px; font-size: 1rem; }
+    .erro { background: #fdecec; color: #c0392b; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
+    .video-wrap { background: #000; border-radius: 10px; overflow: hidden; text-align: center; }
+    .video-wrap img { max-width: 100%; display: block; margin: 0 auto; }
+    .status-box { background: #fff; border-radius: 10px; padding: 16px 20px; margin-top: 16px;
+                  box-shadow: 0 1px 3px rgba(0,0,0,.08); font-size: 1.05rem; }
+    .barra { height: 10px; background: #e6e9f0; border-radius: 99px; margin-top: 10px; overflow: hidden; }
+    .barra > div { height: 100%; background: #1a56c4; width: 0; transition: width .2s; }
+    .topo-acoes { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .vazio { color: #778; padding: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎓 Reconhecimento Facial — Universidade</h1>
+    <nav>
+      <a href="{{ url_for('index') }}">Painel</a>
+      <a href="{{ url_for('cadastro') }}">Cadastrar</a>
+      <a href="{{ url_for('reconhecer') }}">Reconhecer</a>
+    </nav>
+  </header>
+  <main>{% block conteudo %}{% endblock %}</main>
+</body>
+</html>

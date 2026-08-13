@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titulo %}Painel{% endblock %}
+{% block conteudo %}
+  <div class="cards">
+    <div class="card"><div class="num">{{ pessoas|length }}</div><div class="rotulo">Pessoas cadastradas</div></div>
+    <div class="card"><div class="num">{{ total_professores }}</div><div class="rotulo">Professores</div></div>
+    <div class="card"><div class="num">{{ total_estudantes }}</div><div class="rotulo">Estudantes</div></div>
+  </div>
+
+  <div class="topo-acoes">
+    <h2>Pessoas cadastradas</h2>
+    <div>
+      <a class="btn primario" href="{{ url_for('cadastro') }}">+ Cadastrar pessoa</a>
+      {% if modelo_ok %}
+        <a class="btn sucesso" href="{{ url_for('reconhecer') }}">▶ Reconhecer</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <table>
+    <tr><th>Nome</th><th>Papel</th><th>Amostras</th><th></th></tr>
+    {% for p in pessoas %}
+      <tr>
+        <td>{{ p.nome }}</td>
+        <td><span class="badge {{ p.papel }}">{{ p.papel }}</span></td>
+        <td>{{ p.amostras }}</td>
+        <td>
+          <form class="inline" method="post" action="{{ url_for('remover', nome=p.nome) }}"
+                onsubmit="return confirm('Remover {{ p.nome }}?');">
+            <button class="btn perigo">Remover</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="vazio">Ninguém cadastrado ainda. Clique em "Cadastrar pessoa".</td></tr>
+    {% endfor %}
+  </table>
+{% endblock %}

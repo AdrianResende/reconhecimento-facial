@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}Capturando{% endblock %}
+{% block conteudo %}
+  <h2 style="margin-bottom:16px">
+    Capturando: {{ captura.nome }} <span class="badge {{ captura.papel }}">{{ captura.papel }}</span>
+  </h2>
+  <div class="video-wrap"><img src="{{ url_for('video_cadastro') }}" alt="câmera"></div>
+  <div class="status-box">
+    <span id="texto">Aguardando rosto...</span>
+    <div class="barra"><div id="progresso"></div></div>
+  </div>
+
+  <script>
+    const total = {{ total }};
+    const timer = setInterval(async () => {
+      const r = await fetch("{{ url_for('cadastro_status') }}");
+      const s = await r.json();
+      if (s.erro) {
+        clearInterval(timer);
+        document.getElementById("texto").textContent = "Erro: " + s.erro;
+        return;
+      }
+      document.getElementById("texto").textContent =
+        s.concluido ? "Cadastro concluído! Modelo treinado."
+                    : `Amostras: ${s.capturadas} / ${s.total}`;
+      document.getElementById("progresso").style.width =
+        (100 * s.capturadas / s.total) + "%";
+      if (s.concluido) {
+        clearInterval(timer);
+        setTimeout(() => window.location = "{{ url_for('index') }}", 1500);
+      }
+    }, 500);
+  </script>
+{% endblock %}
