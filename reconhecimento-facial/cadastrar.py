@@ -20,8 +20,19 @@ DATASET_DIR = os.path.join(BASE_DIR, "dataset")
 MODELO_PATH = os.path.join(BASE_DIR, "modelo_lbph.yml")
 LABELS_PATH = os.path.join(BASE_DIR, "labels.json")
 
-NUM_AMOSTRAS = 30          # quantas fotos do rosto capturar
+NUM_AMOSTRAS = 50          # quantas fotos do rosto capturar
 TAMANHO_ROSTO = (200, 200)  # tamanho padronizado das imagens de rosto
+
+
+def preprocessar_rosto(recorte_cinza):
+    """Padroniza o rosto: redimensiona e equaliza a iluminação.
+
+    A equalização deixa o modelo menos sensível à luz do ambiente, o que
+    reduz falsos positivos. Deve ser usada igualmente no cadastro e no
+    reconhecimento.
+    """
+    rosto = cv2.resize(recorte_cinza, TAMANHO_ROSTO)
+    return cv2.equalizeHist(rosto)
 
 
 def detectar_rosto(cascade, frame_cinza):
@@ -59,7 +70,7 @@ def capturar_amostras(nome):
 
         if rosto is not None:
             x, y, w, h = rosto
-            recorte = cv2.resize(cinza[y:y + h, x:x + w], TAMANHO_ROSTO)
+            recorte = preprocessar_rosto(cinza[y:y + h, x:x + w])
             cv2.imwrite(os.path.join(pasta_pessoa, f"{capturadas:03d}.png"), recorte)
             capturadas += 1
 

@@ -38,10 +38,15 @@ python reconhecer.py
 
 ## Ajustes
 
-- `LIMIAR_CONFIANCA` em `reconhecer.py` (padrão 70): no LBPH, quanto **menor**
+- `LIMIAR_CONFIANCA` em `reconhecer.py` (padrão 50): no LBPH, quanto **menor**
   o valor da confiança, mais parecido é o rosto. Diminua o limiar para deixar
   o sistema mais rigoroso, aumente para mais tolerante.
-- `NUM_AMOSTRAS` em `cadastrar.py` (padrão 30): mais amostras = modelo melhor.
+- `FRAMES_PARA_CONFIRMAR` em `reconhecer.py` (padrão 10): quantos frames
+  seguidos precisam reconhecer a mesma pessoa antes de confirmar (verde).
+- `NUM_AMOSTRAS` em `cadastrar.py` (padrão 50): mais amostras = modelo melhor.
+
+> Se mudar o cadastro (ou atualizar o código de pré-processamento), apague a
+> pasta `dataset/` e cadastre de novo — as fotos antigas ficam incompatíveis.
 
 ## Estrutura
 

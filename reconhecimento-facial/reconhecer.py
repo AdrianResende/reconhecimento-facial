@@ -19,8 +19,13 @@ MODELO_PATH = os.path.join(BASE_DIR, "modelo_lbph.yml")
 LABELS_PATH = os.path.join(BASE_DIR, "labels.json")
 
 # Limiar de decisão do LBPH: abaixo disso consideramos "mesma pessoa".
-# Ajuste se necessário (valores típicos entre 50 e 80).
-LIMIAR_CONFIANCA = 70.0
+# Quanto MENOR, mais rigoroso. Se estiver rejeitando você mesmo, suba aos
+# poucos (55, 60...); se aceitar outras pessoas, desça (45, 40...).
+LIMIAR_CONFIANCA = 50.0
+
+# Quantos frames seguidos precisam reconhecer a MESMA pessoa para confirmar.
+# Evita que um único frame "sortudo" identifique a pessoa errada.
+FRAMES_PARA_CONFIRMAR = 10
 
 
 def main():
@@ -41,6 +46,10 @@ def main():
 
     print("Reconhecendo... Pressione 'q' para sair.")
 
+    # Contagem de frames consecutivos reconhecendo a mesma pessoa
+    ultimo_id = None
+    frames_seguidos = 0
+
     while True:
         ok, frame = camera.read()
         if not ok:
@@ -51,15 +60,35 @@ def main():
             cinza, scaleFactor=1.2, minNeighbors=5, minSize=(80, 80)
         )
 
+        if len(rostos) == 0:
+            # ninguém na frente da câmera: zera a contagem
+            ultimo_id = None
+            frames_seguidos = 0
+
         for (x, y, w, h) in rostos:
             recorte = cv2.resize(cinza[y:y + h, x:x + w], (200, 200))
+            recorte = cv2.equalizeHist(recorte)
             id_pessoa, confianca = reconhecedor.predict(recorte)
 
             if confianca <= LIMIAR_CONFIANCA:
+                # frame reconheceu; só confirma após vários frames seguidos
+                if id_pessoa == ultimo_id:
+                    frames_seguidos += 1
+                else:
+                    ultimo_id = id_pessoa
+                    frames_seguidos = 1
+
                 nome = labels.get(id_pessoa, "?")
-                texto = f"{nome} ({confianca:.0f})"
-                cor = (0, 255, 0)  # verde: reconhecido
+                if frames_seguidos >= FRAMES_PARA_CONFIRMAR:
+                    texto = f"{nome} confirmado ({confianca:.0f})"
+                    cor = (0, 255, 0)   # verde: identidade confirmada
+                else:
+                    texto = (f"Verificando {nome}... "
+                             f"{frames_seguidos}/{FRAMES_PARA_CONFIRMAR}")
+                    cor = (0, 255, 255)  # amarelo: ainda verificando
             else:
+                ultimo_id = None
+                frames_seguidos = 0
                 texto = f"Desconhecido ({confianca:.0f})"
                 cor = (0, 0, 255)  # vermelho: não reconhecido
 
