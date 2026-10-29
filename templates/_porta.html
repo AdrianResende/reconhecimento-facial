@@ -1,5 +1,5 @@
-{# Porta animada: incluída nas páginas da porta e de testes.
-   Atualize chamando atualizarPorta(estado) com o JSON de /porta/status. #}
+{# Porta da sala animada: incluída nas páginas de presença e de testes.
+   Atualize chamando atualizarPorta(estado) com o campo "porta" do status. #}
 <style>
   .porta-box { background: #fff; border-radius: 10px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.08); text-align: center; }
   .luz { width: 18px; height: 18px; border-radius: 50%; margin: 0 auto 10px; background: #b7bcc8; box-shadow: 0 0 0 4px #eef0f4; transition: .2s; }
@@ -38,12 +38,15 @@
     document.getElementById("porta-luz").className = "luz " + p.estado;
     const msg = document.getElementById("porta-msg");
     const sub = document.getElementById("porta-sub");
-    if (p.estado === "liberado") {
-      msg.textContent = "ACESSO LIBERADO";
-      sub.textContent = `Bem-vindo(a), ${p.nome} (${p.papel}) · conf. ${p.confianca}`;
+    if (p.estado === "liberado" && p.ja_registrada) {
+      msg.textContent = "PRESENÇA JÁ REGISTRADA";
+      sub.textContent = `${p.nome} já entrou hoje às ${p.ja_registrada}`;
+    } else if (p.estado === "liberado") {
+      msg.textContent = "PRESENÇA REGISTRADA";
+      sub.textContent = `${p.nome} (${p.papel}) às ${p.hora} · conf. ${p.confianca}`;
     } else if (p.estado === "negado") {
-      msg.textContent = "ACESSO NEGADO";
-      sub.textContent = `Rosto não reconhecido · conf. ${p.confianca}`;
+      msg.textContent = "ROSTO NÃO RECONHECIDO";
+      sub.textContent = `Presença não registrada · conf. ${p.confianca}`;
     } else if (p.estado === "verificando") {
       msg.textContent = "Verificando...";
       sub.textContent = `${p.progresso} / {{ frames }} frames`;

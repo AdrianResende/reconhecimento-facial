@@ -3,8 +3,9 @@
 Dashboard web de reconhecimento facial para universidade.
 
 - Cadastro de pessoas com nome e papel (Professor/Estudante).
-- Simulação de porta: pessoa cadastrada tem o acesso liberado, quem não é
-  reconhecido tem o acesso negado.
+- Registro de presença: simula uma câmera na porta da sala de aula; quem é
+  reconhecido tem a presença registrada na lista do dia, quem não é
+  reconhecido não tem a presença registrada.
 - Módulo de testes: registra tentativas por caso de teste e participante,
   calcula as métricas e gera o relatório (.docx) para o TCC.
 
@@ -23,7 +24,7 @@ import json
 import time
 import shutil
 import threading
-from collections import Counter, deque
+from collections import Counter
 
 import cv2
 import numpy as np
@@ -34,7 +35,7 @@ from cadastrar import (
     NUM_AMOSTRAS, detectar_rosto, preprocessar_rosto, treinar_modelo,
 )
 from casos_teste import (
-    CASOS, CASOS_POR_ID, TENTATIVAS_POR_CASO, VISITANTE,
+    CASOS, CASOS_POR_ID, TENTATIVAS_POR_CASO, NOMES_DECISAO,
     participantes_do_caso, classificar, carregar_resultados,
     salvar_resultados, calcular_metricas, metricas_por,
 )
@@ -48,6 +49,8 @@ except ImportError:
     sys.exit("Flask não instalado. Rode: pip install -r requirements.txt")
 
 PESSOAS_PATH = os.path.join(BASE_DIR, "pessoas.json")  # nome -> papel
+# data -> {nome: {"papel", "hora"}}
+PRESENCAS_PATH = os.path.join(BASE_DIR, "presencas.json")
 RELATORIO_CONFIG_PATH = os.path.join(BASE_DIR, "relatorio_config.json")
 PAPEIS = ["Professor", "Estudante"]
 
@@ -72,13 +75,14 @@ captura = {
     "capturadas": 0, "concluido": False, "erro": None,
 }
 
-# Estado da porta (lido pelas páginas da porta e de testes)
+# Estado da porta da sala (lido pelas páginas de presença e de testes)
 # estado: aguardando | verificando | liberado | negado
+# ja_registrada: hora da presença anterior, se a pessoa já tinha entrado hoje
 porta = {
     "estado": "aguardando", "progresso": 0, "nome": None, "papel": None,
-    "confianca": None, "hora": None, "bloqueado_ate": 0.0, "reiniciar": False,
+    "confianca": None, "hora": None, "ja_registrada": None,
+    "bloqueado_ate": 0.0, "reiniciar": False,
 }
-acessos = deque(maxlen=30)  # histórico da porta (mais recente primeiro)
 
 tentativa = None        # teste em andamento (dict) ou None
 ultimo_resultado = None  # última tentativa registrada
@@ -101,6 +105,25 @@ def salvar_pessoas(pessoas):
 def contar_amostras(nome):
     pasta = os.path.join(DATASET_DIR, nome)
     return len(os.listdir(pasta)) if os.path.isdir(pasta) else 0
+
+
+def carregar_presencas():
+    if os.path.exists(PRESENCAS_PATH):
+        with open(PRESENCAS_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def registrar_presenca(nome, papel, hora):
+    """Marca presença no dia de hoje; retorna a hora anterior se já havia."""
+    presencas = carregar_presencas()
+    hoje = presencas.setdefault(time.strftime("%Y-%m-%d"), {})
+    if nome in hoje:
+        return hoje[nome]["hora"]
+    hoje[nome] = {"papel": papel, "hora": hora}
+    with open(PRESENCAS_PATH, "w", encoding="utf-8") as f:
+        json.dump(presencas, f, ensure_ascii=False, indent=2)
+    return None
 
 
 def carregar_relatorio_config():
@@ -149,20 +172,28 @@ def frame_para_jpeg(frame):
 
 def estado_porta_publico():
     return {k: porta[k] for k in
-            ("estado", "progresso", "nome", "papel", "confianca", "hora")}
+            ("estado", "progresso", "nome", "papel", "confianca", "hora",
+             "ja_registrada")}
 
 
 # ---------------------------------------------------------------- decisões
 
-def registrar_decisao(decisao, nome, papel, confianca):
-    """Abre (liberado) ou mantém fechada (negado) a porta e fecha a tentativa."""
+def registrar_decisao(decisao, nome, papel, confianca, marcar_presenca):
+    """Mostra a decisão na porta, marca a presença e fecha a tentativa.
+
+    marcar_presenca é falso na página de testes, para as tentativas não
+    entrarem na lista de presença do dia.
+    """
     with trava_estado:
+        hora = time.strftime("%H:%M:%S")
+        ja_registrada = None
+        if decisao == "liberado" and marcar_presenca:
+            ja_registrada = registrar_presenca(nome, papel, hora)
         porta.update(estado=decisao, nome=nome, papel=papel,
-                     confianca=confianca, hora=time.strftime("%H:%M:%S"),
+                     confianca=confianca, hora=hora,
+                     ja_registrada=ja_registrada,
                      progresso=FRAMES_PARA_CONFIRMAR,
                      bloqueado_ate=time.time() + TEMPO_PORTA_ABERTA)
-        acessos.appendleft({"decisao": decisao, "nome": nome, "papel": papel,
-                            "confianca": confianca, "hora": porta["hora"]})
         if tentativa is not None:
             finalizar_tentativa(decisao, nome)
 
@@ -274,18 +305,40 @@ def remover(nome):
     return redirect(url_for("index"))
 
 
-# ---------------------------------------------------------------- porta
+# ---------------------------------------------------------------- presença
 
-@app.route("/porta")
-def pagina_porta():
+@app.route("/presenca")
+def pagina_presenca():
     if not os.path.exists(MODELO_PATH):
         return redirect(url_for("index"))
-    return render_template("porta.html", frames=FRAMES_PARA_CONFIRMAR)
+    return render_template("presenca.html", frames=FRAMES_PARA_CONFIRMAR,
+                           total_cadastrados=len(carregar_pessoas()))
 
 
-@app.route("/porta/status")
-def porta_status():
-    return jsonify(porta=estado_porta_publico(), acessos=list(acessos))
+@app.route("/presenca/status")
+def presenca_status():
+    hoje = carregar_presencas().get(time.strftime("%Y-%m-%d"), {})
+    lista = sorted(({"nome": n, **d} for n, d in hoje.items()),
+                   key=lambda p: p["hora"], reverse=True)
+    return jsonify(porta=estado_porta_publico(), presentes=lista)
+
+
+@app.route("/presenca/csv")
+def presenca_csv():
+    """Lista de presença de todos os dias, para abrir no Excel."""
+    pessoas = carregar_pessoas()
+    saida = io.StringIO()
+    escritor = csv.writer(saida, delimiter=";")
+    escritor.writerow(["data", "nome", "papel", "situacao", "hora_entrada"])
+    for data, presentes in sorted(carregar_presencas().items()):
+        for nome in sorted(set(pessoas) | set(presentes)):
+            p = presentes.get(nome)
+            escritor.writerow([data, nome, pessoas.get(nome, p and p["papel"]),
+                               "Presente" if p else "Ausente",
+                               p["hora"] if p else ""])
+    dados = ("\ufeff" + saida.getvalue()).encode("utf-8")
+    return send_file(io.BytesIO(dados), mimetype="text/csv",
+                     as_attachment=True, download_name="lista_presenca.csv")
 
 
 # ---------------------------------------------------------------- testes
@@ -296,7 +349,8 @@ def pagina_testes():
         return redirect(url_for("index"))
     return render_template(
         "testes.html",
-        casos=CASOS, frames=FRAMES_PARA_CONFIRMAR,
+        casos=CASOS, nomes_decisao=NOMES_DECISAO,
+        frames=FRAMES_PARA_CONFIRMAR,
         tentativas_por_caso=TENTATIVAS_POR_CASO,
         timeout=TIMEOUT_TENTATIVA,
         config=carregar_relatorio_config(),
@@ -400,9 +454,18 @@ def testes_csv():
                      as_attachment=True, download_name="resultados_testes.csv")
 
 
+def parametros_do_prototipo():
+    return {
+        "limiar": LIMIAR_CONFIANCA, "frames": FRAMES_PARA_CONFIRMAR,
+        "amostras": NUM_AMOSTRAS, "timeout": TIMEOUT_TENTATIVA,
+        "tentativas": TENTATIVAS_POR_CASO, "rotacao": ROTACAO,
+    }
+
+
 @app.route("/testes/relatorio", methods=["POST"])
 def testes_relatorio():
-    from relatorio import gerar_relatorio  # python-docx só é exigido aqui
+    # python-docx e matplotlib só são exigidos aqui
+    from relatorio import gerar_docx, gerar_latex
 
     config = {k: request.form.get(k, "").strip() for k in
               ("titulo", "autor", "curso", "instituicao", "cidade", "camera")}
@@ -410,13 +473,9 @@ def testes_relatorio():
     with open(RELATORIO_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=2)
 
-    parametros = {
-        "limiar": LIMIAR_CONFIANCA, "frames": FRAMES_PARA_CONFIRMAR,
-        "amostras": NUM_AMOSTRAS, "timeout": TIMEOUT_TENTATIVA,
-        "tentativas": TENTATIVAS_POR_CASO, "rotacao": ROTACAO,
-    }
-    arquivo = gerar_relatorio(config, parametros, carregar_resultados(),
-                              carregar_pessoas())
+    gerar = gerar_latex if request.form.get("formato") == "latex" else gerar_docx
+    arquivo = gerar(config, parametros_do_prototipo(), carregar_resultados(),
+                    carregar_pessoas())
     return send_file(arquivo, as_attachment=True,
                      download_name=os.path.basename(arquivo))
 
@@ -476,19 +535,20 @@ def gerar_video_cadastro():
             camera.release()
 
 
-@app.route("/video/porta")
-def video_porta():
-    return Response(gerar_video_porta(),
+@app.route("/video/reconhecimento")
+def video_reconhecimento():
+    marcar_presenca = request.args.get("modo") != "testes"
+    return Response(gerar_video_reconhecimento(marcar_presenca),
                     mimetype="multipart/x-mixed-replace; boundary=frame")
 
 
-def gerar_video_porta():
-    """Reconhece o maior rosto do frame e decide se a porta abre.
+def gerar_video_reconhecimento(marcar_presenca=True):
+    """Reconhece o maior rosto do frame e decide se registra a presença.
 
     São precisos FRAMES_PARA_CONFIRMAR frames seguidos com a mesma pessoa
     reconhecida para liberar, ou com rosto desconhecido para negar. Depois
     de uma decisão a porta fica TEMPO_PORTA_ABERTA segundos sem decidir de
-    novo (porta aberta ou mensagem de negado na tela).
+    novo (porta aberta ou mensagem de não reconhecido na tela).
     """
     if not os.path.exists(MODELO_PATH):
         return
@@ -548,9 +608,9 @@ def gerar_video_porta():
                 if bloqueado:
                     # porta já respondeu: só desenha o resultado
                     if porta["estado"] == "liberado":
-                        texto, cor = f"LIBERADO: {porta['nome']}", (0, 200, 0)
+                        texto, cor = f"PRESENTE: {porta['nome']}", (0, 200, 0)
                     else:
-                        texto, cor = "ACESSO NEGADO", (0, 0, 255)
+                        texto, cor = "NAO RECONHECIDO", (0, 0, 255)
                 else:
                     chave = id_pessoa if reconhecido else -1
                     if chave != ultimo_id:
@@ -563,11 +623,13 @@ def gerar_video_porta():
                         media = round(sum(sequencia) / len(sequencia), 1)
                         if reconhecido:
                             registrar_decisao("liberado", nome,
-                                              pessoas.get(nome, "?"), media)
-                            texto, cor = f"LIBERADO: {nome}", (0, 200, 0)
+                                              pessoas.get(nome, "?"), media,
+                                              marcar_presenca)
+                            texto, cor = f"PRESENTE: {nome}", (0, 200, 0)
                         else:
-                            registrar_decisao("negado", None, None, media)
-                            texto, cor = "ACESSO NEGADO", (0, 0, 255)
+                            registrar_decisao("negado", None, None, media,
+                                              marcar_presenca)
+                            texto, cor = "NAO RECONHECIDO", (0, 0, 255)
                         ultimo_id, sequencia = None, []
                     else:
                         texto = (f"Verificando... "

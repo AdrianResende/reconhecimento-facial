@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Casos de teste do controle de acesso e cálculo das métricas.
+Casos de teste do registro de presença e cálculo das métricas.
 
 Usado pela página de testes (app.py) e pelo gerador de relatório
 (relatorio.py), para que os dois usem exatamente as mesmas regras.
 
 Classificação de cada tentativa:
-    VP  verdadeiro positivo  - pessoa cadastrada liberada como ela mesma
-    FN  falso negativo       - pessoa cadastrada barrada (ou não detectada)
-    FP  falso positivo       - acesso liberado indevidamente (fraude/visitante
-                               aceito, ou cadastrado liberado como OUTRA pessoa)
-    VN  verdadeiro negativo  - fraude/visitante barrado
+    VP  verdadeiro positivo  - presença registrada para a pessoa certa
+    FN  falso negativo       - pessoa cadastrada sem presença registrada
+                               (rosto rejeitado ou não detectado)
+    FP  falso positivo       - presença registrada indevidamente (fraude ou
+                               visitante aceito, ou presença dada a OUTRA pessoa)
+    VN  verdadeiro negativo  - fraude/visitante sem presença registrada
 """
 
 import os
@@ -23,13 +24,14 @@ RESULTADOS_PATH = os.path.join(BASE_DIR, "testes.json")
 TENTATIVAS_POR_CASO = 5
 VISITANTE = "Visitante (não cadastrado)"
 
-# esperado: "liberado" = tentativa genuína, "negado" = tentativa de impostor
+# esperado: "liberado" = presença deve ser registrada (tentativa genuína),
+#           "negado" = presença não deve ser registrada (impostor)
 CASOS = [
     {
         "id": "CT01", "grupo": "Distância", "esperado": "liberado",
         "titulo": "Frontal a 50 cm, referência",
         "procedimento": "Fique de frente para a câmera, a cerca de 50 cm, "
-                        "rosto neutro e parado até a porta responder.",
+                        "rosto neutro e parado até o sistema responder.",
     },
     {
         "id": "CT02", "grupo": "Distância", "esperado": "liberado",
@@ -49,31 +51,31 @@ CASOS = [
     },
     {
         "id": "CT05", "grupo": "Ângulo", "esperado": "liberado",
-        "titulo": "Rosto girado ~30° para o lado",
+        "titulo": "Rosto girado cerca de 30° para o lado",
         "procedimento": "A 50 cm, gire a cabeça cerca de 30° para a esquerda "
                         "ou direita (alterne entre as tentativas).",
     },
     {
         "id": "CT06", "grupo": "Ângulo", "esperado": "liberado",
-        "titulo": "Rosto quase de perfil, ~60°",
+        "titulo": "Rosto quase de perfil, cerca de 60°",
         "procedimento": "A 50 cm, gire a cabeça cerca de 60°, quase de perfil.",
     },
     {
         "id": "CT07", "grupo": "Ângulo", "esperado": "liberado",
-        "titulo": "Cabeça inclinada ~20° para cima ou baixo",
+        "titulo": "Cabeça inclinada cerca de 20° para cima ou baixo",
         "procedimento": "A 50 cm, incline a cabeça cerca de 20° para cima ou "
                         "para baixo (alterne entre as tentativas).",
     },
     {
         "id": "CT08", "grupo": "Fraude", "esperado": "negado",
-        "titulo": "Foto do cadastrado na tela do celular",
+        "titulo": "Foto da pessoa cadastrada na tela do celular",
         "procedimento": "Mostre para a câmera, a cerca de 30 cm, uma foto "
                         "frontal do participante selecionado na tela de outro "
                         "celular (brilho no máximo).",
     },
     {
         "id": "CT09", "grupo": "Fraude", "esperado": "negado",
-        "titulo": "Vídeo do cadastrado na tela do celular",
+        "titulo": "Vídeo da pessoa cadastrada na tela do celular",
         "procedimento": "Mostre para a câmera um vídeo do participante "
                         "selecionado (rosto de frente, se mexendo) na tela de "
                         "outro celular.",
@@ -89,6 +91,10 @@ CASOS = [
 ]
 
 CASOS_POR_ID = {c["id"]: c for c in CASOS}
+
+# como cada decisão do sistema aparece na interface e no relatório
+NOMES_DECISAO = {"liberado": "Presença registrada",
+                 "negado": "Não registrada", "sem_decisao": "Sem decisão"}
 
 
 def participantes_do_caso(caso, pessoas):

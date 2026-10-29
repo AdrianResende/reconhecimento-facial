@@ -24,9 +24,9 @@
     @media (max-width: 700px) { .form-relatorio { grid-template-columns: 1fr; } }
   </style>
 
-  <h2 style="margin-bottom:16px">Testes do controle de acesso</h2>
+  <h2 style="margin-bottom:16px">Testes do registro de presença</h2>
   <div class="grade">
-    <div class="video-wrap"><img src="{{ url_for('video_porta') }}" alt="câmera"></div>
+    <div class="video-wrap"><img src="{{ url_for('video_reconhecimento', modo='testes') }}" alt="câmera"></div>
     <div>
       <div class="painel controle">
         <h3>Tentativa</h3>
@@ -47,7 +47,8 @@
         </div>
         <div class="resultado" id="resultado">
           Posicione o participante e clique em <strong>Iniciar tentativa</strong>.
-          O sistema espera até {{ timeout }}s pela decisão da porta.
+          O sistema espera até {{ timeout }}s por uma decisão. As tentativas
+          não entram na lista de presença.
         </div>
       </div>
       <div style="margin-top:16px">{% include "_porta.html" %}</div>
@@ -78,7 +79,7 @@
   </div>
 
   <div class="secao">
-    <h2>Relatório para o TCC (.docx)</h2>
+    <h2>Relatório para o TCC</h2>
     <form class="painel" method="post" action="{{ url_for('testes_relatorio') }}">
       <div class="form-relatorio">
         <div><label for="titulo">Título do TCC</label>
@@ -99,15 +100,18 @@
         <input type="checkbox" name="anonimizar" {% if config.anonimizar is not defined or config.anonimizar %}checked{% endif %}>
         Anonimizar participantes no relatório (P1, P2, ...), como costuma ser exigido em trabalhos acadêmicos
       </label>
-      <button class="btn sucesso" style="margin-top:14px">📄 Gerar relatório .docx</button>
-      <span class="muted">&nbsp;Usa todas as tentativas registradas até agora.</span>
+      <div class="acoes">
+        <button class="btn sucesso" name="formato" value="docx">📄 Relatório .docx (ABNT)</button>
+        <button class="btn primario" name="formato" value="latex">📐 Seção LaTeX para o artigo SBC (.zip)</button>
+        <span class="muted">Usam todas as tentativas registradas até agora.</span>
+      </div>
     </form>
   </div>
 
   <script>
     const CASOS = {{ casos|tojson }};
     const POR_CASO = {{ tentativas_por_caso }};
-    const NOMES_DECISAO = {liberado: "Liberado", negado: "Negado", sem_decisao: "Sem decisão"};
+    const NOMES_DECISAO = {{ nomes_decisao|tojson }};
     const selCaso = document.getElementById("caso");
     const selPart = document.getElementById("participante");
     const btnIniciar = document.getElementById("btn-iniciar");
@@ -129,7 +133,8 @@
       const c = caso(selCaso.value);
       document.getElementById("procedimento").textContent = c.procedimento;
       document.getElementById("esperado").textContent =
-        c.esperado === "liberado" ? "acesso LIBERADO para o participante" : "acesso NEGADO";
+        c.esperado === "liberado" ? "presença REGISTRADA para o próprio participante"
+                                  : "presença NÃO registrada";
       atualizarNumero();
     }
 
@@ -212,7 +217,7 @@
         `<span class="tag ${r.classificacao}">${r.classificacao}</span><br>` +
         `${r.caso} · ${esc(r.participante)} · tentativa ${r.tentativa}: ` +
         `${NOMES_DECISAO[r.decisao]}${r.nome_reconhecido ? " (" + esc(r.nome_reconhecido) + ")" : ""}` +
-        ` em ${r.tempo}s · esperado: ${c.esperado}`;
+        ` em ${r.tempo}s · esperado: ${NOMES_DECISAO[c.esperado].toLowerCase()}`;
     }
 
     async function atualizar() {
@@ -228,7 +233,7 @@
       if (emAndamento) {
         const t = dados.tentativa;
         document.getElementById("resultado").innerHTML =
-          `⏳ ${t.caso} · ${esc(t.participante)} · tentativa ${t.numero}: aguardando a porta... ` +
+          `⏳ ${t.caso} · ${esc(t.participante)} · tentativa ${t.numero}: aguardando o sistema... ` +
           `<strong>${t.decorrido}s</strong> / {{ timeout }}s`;
       }
 

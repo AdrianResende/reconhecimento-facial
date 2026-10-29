@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Presença{% endblock %}
+{% block conteudo %}
+  <h2 style="margin-bottom:4px">Registro de presença</h2>
+  <p class="muted" style="margin-bottom:16px">
+    Simula a câmera instalada na porta da sala: ao entrar, quem é reconhecido
+    tem a presença registrada automaticamente na lista do dia.
+  </p>
+  <div class="grade">
+    <div class="video-wrap"><img src="{{ url_for('video_reconhecimento') }}" alt="câmera"></div>
+    <div>
+      {% include "_porta.html" %}
+      <div class="painel" style="margin-top:16px">
+        <div class="topo-acoes" style="margin-bottom:8px">
+          <h3 style="margin:0">Lista de presença · hoje</h3>
+          <span class="muted" id="contagem"></span>
+        </div>
+        <table id="presentes"></table>
+        <div style="margin-top:12px">
+          <a class="btn neutro" href="{{ url_for('presenca_csv') }}">⬇ Exportar lista (CSV)</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOTAL = {{ total_cadastrados }};
+    async function atualizar() {
+      try {
+        const s = await (await fetch("{{ url_for('presenca_status') }}")).json();
+        atualizarPorta(s.porta);
+        document.getElementById("contagem").textContent = `${s.presentes.length} de ${TOTAL} presentes`;
+        document.getElementById("presentes").innerHTML = s.presentes.length
+          ? "<tr><th>Nome</th><th>Papel</th><th>Entrada</th></tr>" + s.presentes.map(p =>
+              `<tr><td>${esc(p.nome)}</td><td><span class="badge ${esc(p.papel)}">${esc(p.papel)}</span></td>` +
+              `<td>${p.hora}</td></tr>`).join("")
+          : '<tr><td class="vazio">Ninguém registrado hoje ainda.</td></tr>';
+      } catch (e) { /* servidor reiniciando: tenta de novo no próximo ciclo */ }
+    }
+    setInterval(atualizar, 400);
+    atualizar();
+  </script>
+{% endblock %}
