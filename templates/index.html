@@ -12,7 +12,8 @@
     <div>
       <a class="btn primario" href="{{ url_for('cadastro') }}">+ Cadastrar pessoa</a>
       {% if modelo_ok %}
-        <a class="btn sucesso" href="{{ url_for('reconhecer') }}">▶ Reconhecer</a>
+        <a class="btn sucesso" href="{{ url_for('pagina_porta') }}">🚪 Porta</a>
+        <a class="btn neutro" href="{{ url_for('pagina_testes') }}">🧪 Testes ({{ total_testes }})</a>
       {% endif %}
     </div>
   </div>

@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block titulo %}Testes{% endblock %}
+{% block conteudo %}
+  <style>
+    .controle label { display: block; font-weight: 600; font-size: .9rem; margin: 10px 0 4px; }
+    .controle select { width: 100%; padding: 9px; border: 1px solid #ccd2dd; border-radius: 8px; font-size: .95rem; }
+    .procedimento { background: #f7f8fb; border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: .9rem; }
+    .acoes { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+    .resultado { margin-top: 14px; padding: 12px; border-radius: 8px; background: #f7f8fb; font-size: .92rem; min-height: 46px; }
+    .matriz td, .matriz th { padding: 6px 8px; text-align: center; font-size: .85rem; }
+    .matriz td:first-child, .matriz th:first-child { text-align: left; }
+    .matriz .ok { background: #e3f7e8; color: #17803d; font-weight: 700; }
+    .matriz .parcial { background: #fff6dc; color: #8a6400; font-weight: 700; }
+    .matriz .na { color: #c3c7d0; }
+    .metricas { display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+    .metricas .card { min-width: 140px; padding: 14px 16px; }
+    .metricas .num { font-size: 1.6rem; }
+    #tabela-resultados td, #tabela-resultados th, #tabela-casos td, #tabela-casos th { padding: 7px 10px; font-size: .85rem; }
+    .secao { margin-top: 26px; }
+    .secao h2 { margin-bottom: 12px; font-size: 1.2rem; }
+    .form-relatorio { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+    .form-relatorio label { font-weight: 600; font-size: .88rem; display: block; margin-bottom: 4px; }
+    .form-relatorio input[type=text] { width: 100%; padding: 8px; border: 1px solid #ccd2dd; border-radius: 8px; }
+    @media (max-width: 700px) { .form-relatorio { grid-template-columns: 1fr; } }
+  </style>
+
+  <h2 style="margin-bottom:16px">Testes do controle de acesso</h2>
+  <div class="grade">
+    <div class="video-wrap"><img src="{{ url_for('video_porta') }}" alt="câmera"></div>
+    <div>
+      <div class="painel controle">
+        <h3>Tentativa</h3>
+        <label for="caso">Caso de teste</label>
+        <select id="caso">
+          {% for c in casos %}<option value="{{ c.id }}">{{ c.id }} · {{ c.grupo }} · {{ c.titulo }}</option>{% endfor %}
+        </select>
+        <label for="participante">Participante (quem está na frente da câmera)</label>
+        <select id="participante"></select>
+        <div class="procedimento">
+          <div id="procedimento"></div>
+          <div style="margin-top:6px">Resultado esperado: <strong id="esperado"></strong></div>
+        </div>
+        <div class="acoes">
+          <button class="btn primario" id="btn-iniciar">▶ Iniciar tentativa <span id="num-tentativa"></span></button>
+          <button class="btn neutro" id="btn-cancelar" disabled>Cancelar</button>
+          <span class="muted">atalho: barra de espaço</span>
+        </div>
+        <div class="resultado" id="resultado">
+          Posicione o participante e clique em <strong>Iniciar tentativa</strong>.
+          O sistema espera até {{ timeout }}s pela decisão da porta.
+        </div>
+      </div>
+      <div style="margin-top:16px">{% include "_porta.html" %}</div>
+    </div>
+  </div>
+
+  <div class="secao">
+    <h2>Progresso ({{ tentativas_por_caso }} tentativas por participante em cada caso)</h2>
+    <div class="painel tabela-rolagem"><table class="matriz" id="matriz"></table></div>
+  </div>
+
+  <div class="metricas" id="metricas"></div>
+
+  <div class="secao">
+    <h2>Resultados por caso</h2>
+    <div class="tabela-rolagem"><table id="tabela-casos"></table></div>
+  </div>
+
+  <div class="secao">
+    <div class="topo-acoes">
+      <h2 style="margin:0">Tentativas registradas</h2>
+      <div>
+        <a class="btn neutro" href="{{ url_for('testes_csv') }}">⬇ Exportar CSV</a>
+        <button class="btn perigo" id="btn-limpar">Apagar todos</button>
+      </div>
+    </div>
+    <div class="tabela-rolagem"><table id="tabela-resultados"></table></div>
+  </div>
+
+  <div class="secao">
+    <h2>Relatório para o TCC (.docx)</h2>
+    <form class="painel" method="post" action="{{ url_for('testes_relatorio') }}">
+      <div class="form-relatorio">
+        <div><label for="titulo">Título do TCC</label>
+          <input type="text" id="titulo" name="titulo" value="{{ config.titulo or '' }}"></div>
+        <div><label for="autor">Autor</label>
+          <input type="text" id="autor" name="autor" value="{{ config.autor or '' }}"></div>
+        <div><label for="curso">Curso</label>
+          <input type="text" id="curso" name="curso" value="{{ config.curso or '' }}"></div>
+        <div><label for="instituicao">Instituição</label>
+          <input type="text" id="instituicao" name="instituicao" value="{{ config.instituicao or '' }}"></div>
+        <div><label for="cidade">Cidade</label>
+          <input type="text" id="cidade" name="cidade" value="{{ config.cidade or '' }}"></div>
+        <div><label for="camera">Câmera usada</label>
+          <input type="text" id="camera" name="camera"
+                 value="{{ config.camera or 'iPhone transmitindo pelo app DroidCam (Wi-Fi)' }}"></div>
+      </div>
+      <label style="display:block;margin-top:12px">
+        <input type="checkbox" name="anonimizar" {% if config.anonimizar is not defined or config.anonimizar %}checked{% endif %}>
+        Anonimizar participantes no relatório (P1, P2, ...), como costuma ser exigido em trabalhos acadêmicos
+      </label>
+      <button class="btn sucesso" style="margin-top:14px">📄 Gerar relatório .docx</button>
+      <span class="muted">&nbsp;Usa todas as tentativas registradas até agora.</span>
+    </form>
+  </div>
+
+  <script>
+    const CASOS = {{ casos|tojson }};
+    const POR_CASO = {{ tentativas_por_caso }};
+    const NOMES_DECISAO = {liberado: "Liberado", negado: "Negado", sem_decisao: "Sem decisão"};
+    const selCaso = document.getElementById("caso");
+    const selPart = document.getElementById("participante");
+    const btnIniciar = document.getElementById("btn-iniciar");
+    const btnCancelar = document.getElementById("btn-cancelar");
+    let dados = null;
+    let ultimoIdVisto = null;
+    let assinaturaTabelas = "";
+
+    const fmt = v => v === null || v === undefined ? "–" : v;
+    const pct = v => v === null || v === undefined ? "–" : v + "%";
+    const caso = id => CASOS.find(c => c.id === id);
+
+    function montarParticipantes(manter) {
+      const m = dados ? dados.matriz[selCaso.value] : {};
+      const anterior = manter ? selPart.value : null;
+      selPart.innerHTML = Object.entries(m).map(([p, n]) =>
+        `<option value="${esc(p)}">${esc(p)} (${n}/${POR_CASO})</option>`).join("");
+      if (anterior && anterior in m) selPart.value = anterior;
+      const c = caso(selCaso.value);
+      document.getElementById("procedimento").textContent = c.procedimento;
+      document.getElementById("esperado").textContent =
+        c.esperado === "liberado" ? "acesso LIBERADO para o participante" : "acesso NEGADO";
+      atualizarNumero();
+    }
+
+    function atualizarNumero() {
+      const n = dados ? (dados.matriz[selCaso.value][selPart.value] || 0) : 0;
+      document.getElementById("num-tentativa").textContent =
+        n >= POR_CASO ? "(extra)" : `(${n + 1}/${POR_CASO})`;
+    }
+
+    // depois de completar as tentativas de um participante, pula para o próximo pendente
+    function avancar() {
+      const m = dados.matriz;
+      if ((m[selCaso.value][selPart.value] || 0) < POR_CASO) return;
+      const ordem = CASOS.map(c => c.id);
+      for (let i = ordem.indexOf(selCaso.value); i < ordem.length; i++) {
+        const pend = Object.entries(m[ordem[i]]).find(([, n]) => n < POR_CASO);
+        if (pend) {
+          selCaso.value = ordem[i];
+          montarParticipantes(false);
+          selPart.value = pend[0];
+          atualizarNumero();
+          return;
+        }
+      }
+    }
+
+    function desenharMatriz() {
+      const pessoas = [...new Set(CASOS.flatMap(c => Object.keys(dados.matriz[c.id])))];
+      let h = "<tr><th>Participante</th>" + CASOS.map(c => `<th title="${esc(c.titulo)}">${c.id}</th>`).join("") + "</tr>";
+      for (const p of pessoas) {
+        h += `<tr><td>${esc(p)}</td>` + CASOS.map(c => {
+          const n = dados.matriz[c.id][p];
+          if (n === undefined) return '<td class="na">·</td>';
+          return `<td class="${n >= POR_CASO ? "ok" : n ? "parcial" : ""}">${n}/${POR_CASO}</td>`;
+        }).join("") + "</tr>";
+      }
+      document.getElementById("matriz").innerHTML = h;
+    }
+
+    function desenharMetricas() {
+      const g = dados.geral;
+      const cards = [
+        [g.total, "Tentativas"], [pct(g.acuracia), "Acurácia"],
+        [pct(g.tar), "Aceitação correta (TAR)"], [pct(g.frr), "Falsa rejeição (FRR)"],
+        [pct(g.far), "Falsa aceitação (FAR)"], [fmt(g.tempo_medio) + (g.tempo_medio ? " s" : ""), "Tempo médio"],
+      ];
+      document.getElementById("metricas").innerHTML = cards.map(([n, r]) =>
+        `<div class="card"><div class="num">${n}</div><div class="rotulo">${r}</div></div>`).join("");
+
+      let h = "<tr><th>Caso</th><th>Descrição</th><th>Tentativas</th><th>VP</th><th>FN</th><th>FP</th><th>VN</th>" +
+              "<th>Acurácia</th><th>FRR</th><th>FAR</th><th>Tempo médio</th><th>Conf. média</th></tr>";
+      for (const c of CASOS) {
+        const m = dados.por_caso[c.id];
+        if (!m) continue;
+        h += `<tr><td>${c.id}</td><td>${esc(c.titulo)}</td><td>${m.total}</td><td>${m.VP}</td><td>${m.FN}</td>` +
+             `<td>${m.FP}</td><td>${m.VN}</td><td>${pct(m.acuracia)}</td><td>${pct(m.frr)}</td>` +
+             `<td>${pct(m.far)}</td><td>${fmt(m.tempo_medio)}</td><td>${fmt(m.confianca_media)}</td></tr>`;
+      }
+      document.getElementById("tabela-casos").innerHTML =
+        Object.keys(dados.por_caso).length ? h : '<tr><td class="vazio">Nenhuma tentativa ainda.</td></tr>';
+
+      h = "<tr><th>Hora</th><th>Caso</th><th>Participante</th><th>Nº</th><th>Decisão</th>" +
+          "<th>Reconhecido como</th><th>Resultado</th><th>Tempo (s)</th><th>Conf. média</th><th></th></tr>";
+      for (const r of dados.resultados) {
+        h += `<tr><td>${r.data.slice(11)}</td><td>${r.caso}</td><td>${esc(r.participante)}</td><td>${r.tentativa}</td>` +
+             `<td>${NOMES_DECISAO[r.decisao]}</td><td>${esc(fmt(r.nome_reconhecido))}</td>` +
+             `<td><span class="tag ${r.classificacao}">${r.classificacao}</span></td><td>${r.tempo}</td>` +
+             `<td>${fmt(r.confianca_media)}</td>` +
+             `<td><button class="btn perigo" onclick="remover(${r.id})">Descartar</button></td></tr>`;
+      }
+      document.getElementById("tabela-resultados").innerHTML =
+        dados.resultados.length ? h : '<tr><td class="vazio">Nenhuma tentativa ainda.</td></tr>';
+    }
+
+    function mostrarResultado(r) {
+      const c = caso(r.caso);
+      const acertou = r.classificacao === "VP" || r.classificacao === "VN";
+      document.getElementById("resultado").innerHTML =
+        `<strong>${acertou ? "✅ Comportamento correto" : "❌ Comportamento incorreto"}</strong> ` +
+        `<span class="tag ${r.classificacao}">${r.classificacao}</span><br>` +
+        `${r.caso} · ${esc(r.participante)} · tentativa ${r.tentativa}: ` +
+        `${NOMES_DECISAO[r.decisao]}${r.nome_reconhecido ? " (" + esc(r.nome_reconhecido) + ")" : ""}` +
+        ` em ${r.tempo}s · esperado: ${c.esperado}`;
+    }
+
+    async function atualizar() {
+      try {
+        dados = await (await fetch("{{ url_for('testes_dados') }}")).json();
+      } catch (e) { return; }
+      atualizarPorta(dados.porta);
+
+      const emAndamento = dados.tentativa !== null;
+      btnIniciar.disabled = emAndamento;
+      btnCancelar.disabled = !emAndamento;
+      selCaso.disabled = selPart.disabled = emAndamento;
+      if (emAndamento) {
+        const t = dados.tentativa;
+        document.getElementById("resultado").innerHTML =
+          `⏳ ${t.caso} · ${esc(t.participante)} · tentativa ${t.numero}: aguardando a porta... ` +
+          `<strong>${t.decorrido}s</strong> / {{ timeout }}s`;
+      }
+
+      const assinatura = dados.resultados.length + ":" + (dados.resultados[0] || {}).id;
+      if (assinatura !== assinaturaTabelas) {
+        assinaturaTabelas = assinatura;
+        desenharMatriz();
+        desenharMetricas();
+        if (!emAndamento) montarParticipantes(true);
+      }
+      if (ultimoIdVisto === null) {
+        // ao abrir a página: vai direto para o primeiro participante pendente
+        if (!emAndamento) avancar();
+        if (dados.ultimo) mostrarResultado(dados.ultimo);
+        ultimoIdVisto = dados.ultimo ? dados.ultimo.id : 0;
+      } else if (dados.ultimo && dados.ultimo.id !== ultimoIdVisto) {
+        mostrarResultado(dados.ultimo);
+        avancar();
+        ultimoIdVisto = dados.ultimo.id;
+      }
+    }
+
+    async function iniciar() {
+      if (btnIniciar.disabled || !selPart.value) return;
+      btnIniciar.disabled = true;
+      const r = await fetch("{{ url_for('testes_iniciar') }}", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({caso: selCaso.value, participante: selPart.value}),
+      });
+      if (!r.ok) alert((await r.json()).erro);
+      atualizar();
+    }
+
+    async function remover(id) {
+      if (!confirm("Descartar esta tentativa? (ela poderá ser refeita)")) return;
+      await fetch(`/testes/remover/${id}`, {method: "POST"});
+      atualizar();
+    }
+
+    btnIniciar.onclick = iniciar;
+    btnCancelar.onclick = async () => {
+      await fetch("{{ url_for('testes_cancelar') }}", {method: "POST"});
+      atualizar();
+    };
+    document.getElementById("btn-limpar").onclick = async () => {
+      if (!confirm("Apagar TODAS as tentativas registradas? Isso não pode ser desfeito.")) return;
+      await fetch("{{ url_for('testes_limpar') }}", {method: "POST"});
+      atualizar();
+    };
+    selCaso.onchange = () => montarParticipantes(false);
+    selPart.onchange = atualizarNumero;
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space" && !["INPUT", "SELECT", "BUTTON", "TEXTAREA"].includes(e.target.tagName)) {
+        e.preventDefault();
+        iniciar();
+      }
+    });
+
+    setInterval(atualizar, 500);
+    atualizar();
+  </script>
+{% endblock %}

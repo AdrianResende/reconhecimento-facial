@@ -1,0 +1,55 @@
+{# Porta animada: incluída nas páginas da porta e de testes.
+   Atualize chamando atualizarPorta(estado) com o JSON de /porta/status. #}
+<style>
+  .porta-box { background: #fff; border-radius: 10px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.08); text-align: center; }
+  .luz { width: 18px; height: 18px; border-radius: 50%; margin: 0 auto 10px; background: #b7bcc8; box-shadow: 0 0 0 4px #eef0f4; transition: .2s; }
+  .luz.verificando { background: #f0b400; box-shadow: 0 0 14px #f0b400; }
+  .luz.liberado { background: #1fb954; box-shadow: 0 0 18px #1fb954; }
+  .luz.negado { background: #e0352b; box-shadow: 0 0 18px #e0352b; }
+  .batente { width: 170px; height: 250px; margin: 0 auto; border: 10px solid #5b4636; border-bottom: 0;
+             background: linear-gradient(#cfe6ff, #eaf4ff); perspective: 700px; position: relative; }
+  .folha { position: absolute; inset: 0; background: linear-gradient(135deg, #8a6446, #6e4d33);
+           transform-origin: left center; transition: transform .7s ease; }
+  .folha::before { content: ""; position: absolute; inset: 16px 16px 50% 16px; border: 3px solid rgba(0,0,0,.18); border-radius: 3px; }
+  .folha::after { content: ""; position: absolute; inset: 56% 16px 16px 16px; border: 3px solid rgba(0,0,0,.18); border-radius: 3px; }
+  .macaneta { position: absolute; right: 14px; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: #e8c45a; z-index: 1; }
+  .porta-box.liberado .folha { transform: rotateY(-78deg); }
+  .porta-box.negado .folha { animation: tremer .35s 2; }
+  @keyframes tremer { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .porta-msg { margin-top: 14px; font-size: 1.25rem; font-weight: 700; min-height: 1.6em; }
+  .porta-box.liberado .porta-msg { color: #17803d; }
+  .porta-box.negado .porta-msg { color: #c0392b; }
+  .porta-sub { color: #667; font-size: .9rem; min-height: 1.3em; }
+</style>
+<div class="porta-box" id="porta-box">
+  <div class="luz" id="porta-luz"></div>
+  <div class="batente"><div class="folha"><div class="macaneta"></div></div></div>
+  <div class="porta-msg" id="porta-msg">Aproxime-se da câmera</div>
+  <div class="porta-sub" id="porta-sub">&nbsp;</div>
+</div>
+<script>
+  function esc(t) {
+    return String(t ?? "").replace(/[&<>"']/g, c =>
+      ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+  }
+  function atualizarPorta(p) {
+    const box = document.getElementById("porta-box");
+    box.className = "porta-box " + p.estado;
+    document.getElementById("porta-luz").className = "luz " + p.estado;
+    const msg = document.getElementById("porta-msg");
+    const sub = document.getElementById("porta-sub");
+    if (p.estado === "liberado") {
+      msg.textContent = "ACESSO LIBERADO";
+      sub.textContent = `Bem-vindo(a), ${p.nome} (${p.papel}) · conf. ${p.confianca}`;
+    } else if (p.estado === "negado") {
+      msg.textContent = "ACESSO NEGADO";
+      sub.textContent = `Rosto não reconhecido · conf. ${p.confianca}`;
+    } else if (p.estado === "verificando") {
+      msg.textContent = "Verificando...";
+      sub.textContent = `${p.progresso} / {{ frames }} frames`;
+    } else {
+      msg.textContent = "Aproxime-se da câmera";
+      sub.innerHTML = "&nbsp;";
+    }
+  }
+</script>

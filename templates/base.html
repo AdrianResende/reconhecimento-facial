@@ -11,7 +11,7 @@
     header h1 { font-size: 1.1rem; font-weight: 600; }
     header nav a { color: #c6d2ee; text-decoration: none; margin-right: 18px; font-size: .95rem; }
     header nav a:hover { color: #fff; }
-    main { max-width: 960px; margin: 28px auto; padding: 0 16px; }
+    main { max-width: 1180px; margin: 28px auto; padding: 0 16px; }
     .cards { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
     .card { background: #fff; border-radius: 10px; padding: 18px 22px; flex: 1; min-width: 180px;
             box-shadow: 0 1px 3px rgba(0,0,0,.08); }
@@ -44,6 +44,17 @@
     .barra > div { height: 100%; background: #1a56c4; width: 0; transition: width .2s; }
     .topo-acoes { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .vazio { color: #778; padding: 24px; text-align: center; }
+    .grade { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+    @media (max-width: 860px) { .grade { grid-template-columns: 1fr; } }
+    .painel { background: #fff; border-radius: 10px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .painel h3 { font-size: 1rem; margin-bottom: 12px; }
+    .muted { color: #667; font-size: .88rem; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.neutro { background: #eef0f4; color: #1c2333; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .78rem; font-weight: 700; }
+    .tag.VP, .tag.VN { background: #e3f7e8; color: #17803d; }
+    .tag.FP, .tag.FN { background: #fdecec; color: #c0392b; }
+    .tabela-rolagem { overflow-x: auto; }
   </style>
 </head>
 <body>
@@ -52,7 +63,8 @@
     <nav>
       <a href="{{ url_for('index') }}">Painel</a>
       <a href="{{ url_for('cadastro') }}">Cadastrar</a>
-      <a href="{{ url_for('reconhecer') }}">Reconhecer</a>
+      <a href="{{ url_for('pagina_porta') }}">Porta</a>
+      <a href="{{ url_for('pagina_testes') }}">Testes</a>
     </nav>
   </header>
   <main>{% block conteudo %}{% endblock %}</main>

@@ -5,3 +5,6 @@ pessoas.json
 __pycache__/
 venv/
 haarcascade_frontalface_default.xml
+testes.json
+relatorio_config.json
+relatorio_tcc.docx
